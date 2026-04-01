@@ -1122,6 +1122,20 @@ div[data-testid="stNumberInput"] input {
     color: black !important;
 }
 
+/* Targeted fix: remove empty gray bubble in filters modal (below dialog title, above widgets).
+   Empty markdown / block chrome. Scoped where possible; .stAlert rule is dialog-only so app alerts still work. */
+div[data-testid="stMarkdownContainer"]:empty,
+div[data-testid="stBlock"] div:has(> div[data-testid="stMarkdownContainer"]:empty) {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Fallback: hide alert chrome inside filter dialog only (not global — would break st.info/st.warning/st.error) */
+div[data-testid="stDialog"] .stAlert {
+    display: none !important;
+}
+
 </style>
 """,
         unsafe_allow_html=True,
