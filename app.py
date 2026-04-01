@@ -95,28 +95,32 @@ def remove_from_watchlist(movie_id: int) -> None:
 
 def _on_watchlist_add_click(movie: dict[str, Any]) -> None:
     """
-    Streamlit on_click callback: runs before the script reruns so the watchlist
-    update is committed to session_state immediately (avoids empty-watchlist traps).
+    Streamlit on_click callback: update session_state only (no toasts/alerts).
     """
     _ensure_watchlist_state()
-    added = add_to_watchlist(movie)
-    if added:
-        st.session_state["_watchlist_last_action"] = "added"
-    elif movie.get("id") is None:
-        st.session_state["_watchlist_last_action"] = "invalid"
+    add_to_watchlist(movie)
+
+
+@st.fragment
+def _render_movie_poster_watchlist_controls(movie: dict[str, Any], button_key_prefix: str) -> None:
+    """
+    Poster + watchlist button in a fragment so clicks rerun only this block,
+    reducing full-page reruns and scroll jumps.
+    """
+    ui_components.movie_card(movie)
+    mid = movie.get("id")
+    if mid is None:
+        return
+    mid_i = int(mid)
+    if mid_i in _watchlist_ids():
+        st.button("Added!", key=f"{button_key_prefix}_{mid_i}", disabled=True)
     else:
-        st.session_state["_watchlist_last_action"] = "duplicate"
-
-
-def _flush_watchlist_feedback() -> None:
-    """Show toast once after a watchlist button callback, then clear the flag."""
-    act = st.session_state.pop("_watchlist_last_action", None)
-    if act == "added":
-        st.toast("Saved to your watchlist.")
-    elif act == "duplicate":
-        st.toast("Already in your watchlist.")
-    elif act == "invalid":
-        st.toast("Could not add this title.")
+        st.button(
+            "Watchlist +",
+            key=f"{button_key_prefix}_{mid_i}",
+            on_click=_on_watchlist_add_click,
+            args=(movie,),
+        )
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -2012,19 +2016,7 @@ def page_smart(genre_options: list[dict[str, Any]]) -> None:
         with st.container():
             c1, c2 = st.columns([1, 3], gap="large")
             with c1:
-                ui_components.movie_card(movie)
-                _mid = movie.get("id")
-                if _mid is not None:
-                    _on_wl = int(_mid) in _watchlist_ids()
-                    if _on_wl:
-                        st.button("Added!", key=f"wl_smart_{_mid}", disabled=True)
-                    else:
-                        st.button(
-                            "Watchlist +",
-                            key=f"wl_smart_{_mid}",
-                            on_click=_on_watchlist_add_click,
-                            args=(movie,),
-                        )
+                _render_movie_poster_watchlist_controls(movie, "wl_smart")
             with c2:
                 st.markdown(f"**Score** `{score:.3f}`  \n**Why this title:**")
                 ui_components.explanation_block(
@@ -2337,19 +2329,7 @@ def page_similar(genre_options: list[dict[str, Any]]) -> None:
     for movie, score, comps in ranked:
         c1, c2 = st.columns([1, 3], gap="large")
         with c1:
-            ui_components.movie_card(movie)
-            _mid = movie.get("id")
-            if _mid is not None:
-                _on_wl = int(_mid) in _watchlist_ids()
-                if _on_wl:
-                    st.button("Added!", key=f"wl_sim_{_mid}", disabled=True)
-                else:
-                    st.button(
-                        "Watchlist +",
-                        key=f"wl_sim_{_mid}",
-                        on_click=_on_watchlist_add_click,
-                        args=(movie,),
-                    )
+            _render_movie_poster_watchlist_controls(movie, "wl_sim")
         with c2:
             st.metric("Hybrid similarity", f"{score:.3f}")
             ui_components.explanation_block(recommender.explanation_blurb(an, movie, comps))
@@ -2435,8 +2415,6 @@ def main() -> None:
     with st.sidebar:
         st.markdown("### PickAFlick")
         st.caption("Use **Filters** on Smart recommendations or Similar movies to refine results.")
-
-    _flush_watchlist_feedback()
 
     tabs = st.tabs(["Home", "Smart recommendations", "Similar movies", "Watchlist", "Insights"])
     with tabs[0]:
