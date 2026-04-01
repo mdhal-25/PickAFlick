@@ -1137,7 +1137,7 @@ def page_home() -> None:
     )
     film_strip = Path("your_film_strip_image.png")
     if film_strip.exists():
-        st.image(str(film_strip), use_column_width=True)
+        st.image(str(film_strip), use_container_width=True)
     st.markdown(
         "Discover what to watch next with **content-based TF-IDF**, **overview sentiment**, "
         "and **popularity-aware** blending — all powered by TMDB."
@@ -1960,7 +1960,7 @@ def page_smart(genre_options: list[dict[str, Any]]) -> None:
         return
     for movie, score, comps in ranked:
         with st.container():
-            c1, c2 = st.columns([1, 3])
+            c1, c2 = st.columns([1, 3], gap="large")
             with c1:
                 ui_components.movie_card(movie)
                 if st.button("Watchlist +", key=f"wl_smart_{movie.get('id')}"):
@@ -2276,7 +2276,7 @@ def page_similar(genre_options: list[dict[str, Any]]) -> None:
         save_prefix_to_shared("sim")
         return
     for movie, score, comps in ranked:
-        c1, c2 = st.columns([1, 3])
+        c1, c2 = st.columns([1, 3], gap="large")
         with c1:
             ui_components.movie_card(movie)
         with c2:
@@ -2295,7 +2295,7 @@ def page_watchlist() -> None:
         return
     for row_start in range(0, len(wl), 4):
         row = wl[row_start : row_start + 4]
-        cols = st.columns(4)
+        cols = st.columns(4, gap="large")
         for col, m in zip(cols, row):
             with col:
                 ui_components.movie_card(m)
@@ -2335,6 +2335,20 @@ def main() -> None:
         page_icon="🎬",
         layout="wide",
         initial_sidebar_state="collapsed",
+    )
+    st.markdown(
+        """
+    <style>
+    /* Prevent Streamlit full-screen layout shaking (scrollbar loop) */
+    .stApp {
+        overflow-x: hidden;
+    }
+    .block-container {
+        overflow-x: hidden;
+    }
+    </style>
+    """,
+        unsafe_allow_html=True,
     )
     apply_custom_theme_css()
     try_api_or_stop()

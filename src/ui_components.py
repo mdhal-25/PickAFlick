@@ -40,7 +40,7 @@ def movie_grid(
         return
     for row_start in range(0, len(movies), cols):
         row = movies[row_start : row_start + cols]
-        columns = st.columns(cols)
+        columns = st.columns(cols, gap="large")
         for col, m in zip(columns, row):
             with col:
                 movie_card(m, key_prefix=f"{key_prefix}_{m.get('id')}")
