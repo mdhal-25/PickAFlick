@@ -15,7 +15,7 @@ def movie_card(movie: dict[str, Any], *, key_prefix: str = "m") -> None:
     """Compact tile: poster, title, rating, year."""
     mid = movie.get("id", 0)
     title = movie.get("title") or "Untitled"
-    poster = api.poster_url(movie.get("poster_path"))
+    poster = movie.get("poster_url") or api.poster_url(movie.get("poster_path"))
     rating = movie.get("vote_average")
     rd = movie.get("release_date") or ""
     year = rd[:4] if len(rd) >= 4 else "—"

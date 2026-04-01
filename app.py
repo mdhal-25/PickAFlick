@@ -60,22 +60,32 @@ def _watchlist_ids() -> set[int]:
     return {int(m["id"]) for m in st.session_state.watchlist if m.get("id") is not None}
 
 
-def add_to_watchlist(movie: dict[str, Any]) -> None:
+def add_to_watchlist(movie: dict[str, Any]) -> bool:
+    """
+    Append a compact movie record to the watchlist.
+    Returns True if added, False if missing id or already present.
+    """
     _ensure_watchlist_state()
     mid = movie.get("id")
     if mid is None:
-        return
-    if int(mid) in _watchlist_ids():
-        return
+        return False
+    mid_i = int(mid)
+    if mid_i in _watchlist_ids():
+        return False
+    rd = str(movie.get("release_date") or "")
+    year = rd[:4] if len(rd) >= 4 else ""
     st.session_state.watchlist.append(
         {
-            "id": movie.get("id"),
+            "id": mid_i,
             "title": movie.get("title"),
             "poster_path": movie.get("poster_path"),
-            "vote_average": movie.get("vote_average"),
+            "poster_url": api.poster_url(movie.get("poster_path")),
             "release_date": movie.get("release_date"),
+            "year": year,
+            "vote_average": movie.get("vote_average"),
         }
     )
+    return True
 
 
 def remove_from_watchlist(movie_id: int) -> None:
@@ -1977,9 +1987,17 @@ def page_smart(genre_options: list[dict[str, Any]]) -> None:
             c1, c2 = st.columns([1, 3], gap="large")
             with c1:
                 ui_components.movie_card(movie)
-                if st.button("Watchlist +", key=f"wl_smart_{movie.get('id')}"):
-                    add_to_watchlist(movie)
-                    st.success("Added to watchlist.")
+                _mid = movie.get("id")
+                if _mid is not None:
+                    _on_wl = int(_mid) in _watchlist_ids()
+                    if _on_wl:
+                        st.button("Added!", key=f"wl_smart_{_mid}", disabled=True)
+                    elif st.button("Watchlist +", key=f"wl_smart_{_mid}"):
+                        if add_to_watchlist(movie):
+                            st.toast("Saved to your watchlist.")
+                        else:
+                            st.toast("Already in your watchlist.")
+                        st.rerun()
             with c2:
                 st.markdown(f"**Score** `{score:.3f}`  \n**Why this title:**")
                 ui_components.explanation_block(
@@ -2293,6 +2311,17 @@ def page_similar(genre_options: list[dict[str, Any]]) -> None:
         c1, c2 = st.columns([1, 3], gap="large")
         with c1:
             ui_components.movie_card(movie)
+            _mid = movie.get("id")
+            if _mid is not None:
+                _on_wl = int(_mid) in _watchlist_ids()
+                if _on_wl:
+                    st.button("Added!", key=f"wl_sim_{_mid}", disabled=True)
+                elif st.button("Watchlist +", key=f"wl_sim_{_mid}"):
+                    if add_to_watchlist(movie):
+                        st.toast("Saved to your watchlist.")
+                    else:
+                        st.toast("Already in your watchlist.")
+                    st.rerun()
         with c2:
             st.metric("Hybrid similarity", f"{score:.3f}")
             ui_components.explanation_block(recommender.explanation_blurb(an, movie, comps))
@@ -2304,9 +2333,10 @@ def page_watchlist() -> None:
     st.header("Watchlist")
     _ensure_watchlist_state()
     wl = st.session_state.watchlist
-    if not wl:
+    if len(wl) == 0:
         st.info("Your watchlist is empty. Add titles from Smart recommendations.")
         return
+    st.caption(f"{len(wl)} title(s) saved — add more from **Smart recommendations** or **Similar movies**.")
     for row_start in range(0, len(wl), 4):
         row = wl[row_start : row_start + 4]
         cols = st.columns(4, gap="large")
@@ -2350,6 +2380,7 @@ def main() -> None:
         layout="wide",
         initial_sidebar_state="collapsed",
     )
+    _ensure_watchlist_state()
     st.markdown(
         """
     <style>
